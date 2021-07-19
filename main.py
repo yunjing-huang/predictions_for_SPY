@@ -25,13 +25,6 @@ def seq2seq_window_dataset(series, window_size, batch_size=32, shuffle_buffer=20
     ds = ds.shuffle(shuffle_buffer)
     ds = ds.map(lambda w: (w[:-1], w[1:]))
     return ds.batch(batch_size).prefetch(1)
-def model_forecast(model, series, window_size):
-    ds = tf.data.Dataset.from_tensor_slices(series)
-    ds = ds.window(window_size, shift=1, drop_remainder=True)
-    ds = ds.flat_map(lambda w: w.batch(window_size))
-    ds = ds.batch(32).prefetch(1)
-    forecast = model.predict(ds)
-    return forecast
 tf.random.set_seed(42)
 np.random.seed(42)
 window_size = 64
@@ -59,14 +52,14 @@ history = model.fit(train_set, epochs=500,
                     validation_data=valid_set,
                     callbacks=[early_stopping, model_checkpoint])
 model = tf.keras.models.load_model("checkpoint.h5")
-rnn_forecast = model.predict(series[np.newaxis, :, np.newaxis])
-rnn_forecast = rnn_forecast[0, split_time - 1:-1, 0]
+forecast = model.predict(series[np.newaxis, :, np.newaxis])
+forecast = forecast[0, split_time - 1:-1, 0]
 n = tf.keras.metrics.MeanAbsoluteError()
-n.update_state(x_valid, rnn_forecast)
+n.update_state(x_valid, forecast)
 print(n.result().numpy())
 plt.figure(figsize=(10, 6))
 plot_series(time_valid, x_valid)
-plot_series(time_valid, rnn_forecast)
+plot_series(time_valid, forecast)
 plt.show()
 
 
